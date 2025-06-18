@@ -169,9 +169,8 @@ namespace pff.Homestead
         /// <param name="key"></param>
         /// <param name="playerId">若为0则使用当前玩家id</param>
         /// <returns></returns>
-        public TValue GetPlayerUniqueConfig<TValue>(PlayerUniqueOption key)
+        public TValue GetPlayerUniqueConfig<TValue>(long playerId,PlayerUniqueOption key)
         {
-            var playerId = 1;
             Dictionary<PlayerUniqueOption, object> playerDic;
             object oldValue;
             if ((_playerUniqueOptions.TryGetValue(playerId, out playerDic) || LoadPlayerUniqueOption(playerId, out playerDic)) && playerDic.TryGetValue(key, out oldValue))
@@ -179,14 +178,13 @@ namespace pff.Homestead
                 return (TValue)(oldValue);
             }
             var val = (TValue)OptionDataTables.s_PlayerUniqueDefaultsMap[key];
-            SetPlayerUniqueConfig(key, val);
+            SetPlayerUniqueConfig(playerId,key, val);
 
             return val;
         }
 
-        public void SetPlayerUniqueConfig(PlayerUniqueOption key, object value)
+        public void SetPlayerUniqueConfig(long playerId,PlayerUniqueOption key, object value)
         {
-            var playerId = 1;
             Dictionary<PlayerUniqueOption, object> playerDic;
             if (!_playerUniqueOptions.TryGetValue(playerId, out playerDic))
             {
