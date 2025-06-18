@@ -28,9 +28,30 @@ namespace GF.Log
             if (!CheckLogLevel(level))
                 return;
 
-            var formattedMessage = args?.Length > 0 ? string.Format(message, args) : message;
-            var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {formattedMessage}";
+            // 使用公共格式化器进行高效格式化
+            string formattedMessage;
+            if (args != null && args.Length > 0 && LogFormatter.NeedsFormatting(message))
+            {
+                formattedMessage = LogFormatter.SafeFormat(message, args);
+            }
+            else if (args != null && args.Length > 0)
+            {
+                // 不需要格式化但有参数，回退到标准格式化
+                try
+                {
+                    formattedMessage = string.Format(message, args);
+                }
+                catch (Exception)
+                {
+                    formattedMessage = LogFormatter.SafeFormat(message, args);
+                }
+            }
+            else
+            {
+                formattedMessage = message;
+            }
 
+            var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {formattedMessage}";
             WriteToFile(logEntry);
         }
 

@@ -6,13 +6,15 @@ using UnityEngine;
 
 namespace GF.Log
 {
-    public class BufferedLogger : ILogger
+    public class BufferedLogger : ILogger, IDisposable
     {
         private readonly ILogger _innerLogger;
         private readonly ConcurrentQueue<LogEntry> _logQueue;
         private readonly Timer _flushTimer;
         private readonly int _bufferSize;
         private readonly int _flushInterval;
+        private readonly object _flushLock = new object();
+        private volatile bool _disposed = false;
 
         public bool Enable
         {
@@ -38,6 +40,8 @@ namespace GF.Log
 
         public void Log(LogLevel level, string message, params object[] args)
         {
+            if (_disposed) return;
+
             _logQueue.Enqueue(
                 new LogEntry
                 {
@@ -56,6 +60,8 @@ namespace GF.Log
 
         public void Log(Exception exception)
         {
+            if (_disposed) return;
+
             _logQueue.Enqueue(new LogEntry { Exception = exception, Timestamp = DateTime.Now });
 
             if (_logQueue.Count >= _bufferSize)
@@ -66,35 +72,54 @@ namespace GF.Log
 
         private void FlushLogs(object state)
         {
-            try
+            if (_disposed) return;
+
+            // 使用锁防止并发刷新
+            lock (_flushLock)
             {
-                while (_logQueue.TryDequeue(out var entry))
+                try
                 {
-                    if (entry.Exception != null)
+                    while (_logQueue.TryDequeue(out var entry))
                     {
-                        _innerLogger.Log(entry.Exception);
-                    }
-                    else
-                    {
-                        _innerLogger.Log(entry.Level, entry.Message, entry.Args);
+                        if (entry.Exception != null)
+                        {
+                            _innerLogger.Log(entry.Exception);
+                        }
+                        else
+                        {
+                            _innerLogger.Log(entry.Level, entry.Message, entry.Args);
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"刷新日志缓冲区时出错: {ex.Message}");
+                catch (Exception ex)
+                {
+                    Debug.LogError($"刷新日志缓冲区时出错: {ex.Message}");
+                }
             }
         }
 
         public void Flush()
         {
-            FlushLogs(null);
+            if (!_disposed)
+            {
+                FlushLogs(null);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _flushTimer?.Dispose();
+                FlushLogs(null); // 最后一次刷新
+                GC.SuppressFinalize(this);
+            }
         }
 
         ~BufferedLogger()
         {
-            _flushTimer?.Dispose();
-            FlushLogs(null);
+            Dispose();
         }
 
         private class LogEntry

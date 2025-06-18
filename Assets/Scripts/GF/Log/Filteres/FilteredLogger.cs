@@ -42,15 +42,33 @@ namespace GF.Log
 
         public void Log(LogLevel level, string message, params object[] args)
         {
-            var formattedMessage = args?.Length > 0 ? string.Format(message, args) : message;
+            // 提前检查是否有过滤器，如果没有直接调用内部日志器
+            if (_filters.Count == 0)
+            {
+                _innerLogger.Log(level, message, args);
+                return;
+            }
+
+            // 只有在需要过滤时才格式化消息
+            string formattedMessage;
+            if (args != null && args.Length > 0 && LogFormatter.NeedsFormatting(message))
+            {
+                // 使用公共格式化器进行高效格式化
+                formattedMessage = LogFormatter.Format(message, args);
+            }
+            else
+            {
+                formattedMessage = message;
+            }
 
             // 应用所有过滤器
             foreach (var filter in _filters)
             {
                 if (!filter.ShouldLog(level, formattedMessage))
-                    return;
+                    return; // 提前返回，避免后续处理
             }
 
+            // 传递原始参数给内部日志器，避免重复格式化
             _innerLogger.Log(level, message, args);
         }
 
