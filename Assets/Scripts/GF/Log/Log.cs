@@ -153,33 +153,33 @@ namespace GF.Log
         [Conditional("LOG_ENABLE")]
         public static void Debug(string message, params object[] args)
         {
-            Logger.Debug(message, args);
+            Logger.Log(LogLevel.Debug,message, args);
         }
 
         [HideInCallstack]
         [Conditional("LOG_ENABLE")]
         public static void Info(string message, params object[] args)
         {
-            Logger.Info(message, args);
+            Logger.Log(LogLevel.Info,message, args);
         }
 
         [HideInCallstack]
         [Conditional("LOG_ENABLE")]
         public static void Warning(string message, params object[] args)
         {
-            Logger.Warning(message, args);
+            Logger.Log(LogLevel.Warning,message, args);
         }
 
         [HideInCallstack]
         public static void Error(string message, params object[] args)
         {
-            Logger.Error(message, args);
+            Logger.Log(LogLevel.Error,message, args);
         }
 
         [HideInCallstack]
         public static void Error(Exception exception)
         {
-            Logger.Error(exception);
+            Logger.Log(exception);
         }
     }
 }

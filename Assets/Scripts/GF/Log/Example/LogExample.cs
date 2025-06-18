@@ -122,13 +122,13 @@ namespace GF.Log
             filteredLogger.AddFilter(rateLimitFilter);
 
             // 使用自定义日志器
-            ((ILogger)filteredLogger).Info("这是自定义日志器的信息");
-            ((ILogger)filteredLogger).Info("垃圾信息 - 会被过滤");
+            filteredLogger.Log(LogLevel.Info,"这是自定义日志器的信息");
+            filteredLogger.Log(LogLevel.Info,"垃圾信息 - 会被过滤");
 
             // 测试频率限制
             for (int i = 0; i < 5; i++)
             {
-                ((ILogger)filteredLogger).Info("重复消息 - 只有第一条会显示");
+                filteredLogger.Log(LogLevel.Info,"重复消息 - 只有第一条会显示");
             }
 
             // 刷新缓冲区
