@@ -68,7 +68,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Debug($"{_tag}{message}", args);
+            this._logger.Log(LogLevel.Debug,$"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -77,7 +77,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Info($"{_tag}{message}", args);
+            this._logger.Log(LogLevel.Info,$"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -88,42 +88,7 @@ namespace GF.Log
                 return;
             var colorStr = ColorUtility.ToHtmlStringRGB(color);
             var showMsg = $"{_tag}<color=#{colorStr}>{message}</color>";
-            this._logger.Info(showMsg);
-        }
-
-        [HideInCallstack]
-        [Conditional("LOG_ENABLE")]
-        public void InfoFormat(string format, params object[] args)
-        {
-            if (!_enable)
-                return;
-            this._logger.Info($"{_tag}{format}", args);
-        }
-
-        [HideInCallstack]
-        [Conditional("LOG_ENABLE")]
-        public void DebugFormat(string format, params object[] args)
-        {
-            if (!_enable)
-                return;
-            this._logger.Debug($"{_tag}{format}", args);
-        }
-
-        [HideInCallstack]
-        [Conditional("LOG_ENABLE")]
-        public void WarningFormat(string format, params object[] args)
-        {
-            if (!_enable)
-                return;
-            this._logger.Warning($"{_tag}{format}", args);
-        }
-
-        [HideInCallstack]
-        public void ErrorFormat(string format, params object[] args)
-        {
-            if (!_enable)
-                return;
-            this._logger.Error($"{_tag}{format}", args);
+            this._logger.Log(LogLevel.Info,showMsg);
         }
 
         // 支持方法调用跟踪
@@ -144,7 +109,7 @@ namespace GF.Log
                 ? $"[TRACE] {fileName}.{memberName}:{sourceLineNumber}"
                 : $"[TRACE] {fileName}.{memberName}:{sourceLineNumber} - {message}";
 
-            this._logger.Debug($"{_tag}{traceMsg}");
+            this._logger.Log(LogLevel.Info,$"{_tag}{traceMsg}");
         }
 
         [HideInCallstack]
@@ -153,7 +118,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Warning($"{_tag}{message}", args);
+            this._logger.Log(LogLevel.Warning,$"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -161,7 +126,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Error($"{_tag}{message}", args);
+            this._logger.Log(LogLevel.Error,$"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -169,7 +134,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Error(e);
+            this._logger.Log(e);
         }
     }
 }
