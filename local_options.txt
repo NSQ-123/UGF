@@ -1,0 +1,5 @@
+[Default]
+DebugTest="值1值2值3"
+DebugTest2="值1|值2|值3"
+TestComposite="苹果香蕉橙子"
+
