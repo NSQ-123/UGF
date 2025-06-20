@@ -7,7 +7,7 @@ namespace GF.Log
     /// <summary>
     /// 高性能日志格式化工具类
     /// </summary>
-    public static class LogFormatter
+    public static class StringFormatter
     {
         // 线程本地的StringBuilder池
         private static readonly ThreadLocal<StringBuilder> _stringBuilder = 

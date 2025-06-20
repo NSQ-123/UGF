@@ -7,15 +7,15 @@ using Debug = UnityEngine.Debug;
 
 namespace GF.Log
 {
-    public class UnityLogger : LoggerBase
+    public class UnityLogger : ILogger
     {
         public UnityLogger() { }
 
-        public override bool Enable { get; set; } = true;
-        public override LogLevel EnableLevel { get; set; } = LogLevel.Debug;
+        public bool Enable { get; set; } = true;
+        public LogLevel EnableLevel { get; set; } = LogLevel.Debug;
 
         [HideInCallstack]
-        public override void Log(LogLevel level, string message, params object[] args)
+        public void Log(LogLevel level, string message, params object[] args)
         {
             if (!CheckLogLevel(level))
                 return;
@@ -23,16 +23,16 @@ namespace GF.Log
             // 如果有参数且需要格式化，先进行格式化
             if (args != null && args.Length > 0)
             {
-                if (LogFormatter.NeedsFormatting(message))
+                if (StringFormatter.NeedsFormatting(message))
                 {
                     // 使用高性能格式化器
-                    var formattedMessage = LogFormatter.SafeFormat(message, args);
+                    var formattedMessage = StringFormatter.SafeFormat(message, args);
                     CallInternalLogger(level, formattedMessage);
                 }
                 else
                 {
                     // 不需要自定义格式化，直接使用Unity的格式化
-                    CallInternalLoggerWithArgs(level, message, args);
+                    CallInternalLogger(level, message, args);
                 }
             }
             else
@@ -42,29 +42,7 @@ namespace GF.Log
             }
         }
 
-        private void CallInternalLogger(LogLevel level, string message)
-        {
-            switch (level)
-            {
-                case LogLevel.Debug:
-                    LogDebugInternal(message);
-                    break;
-                case LogLevel.Info:
-                    LogInfoInternal(message);
-                    break;
-                case LogLevel.Warning:
-                    LogWarningInternal(message);
-                    break;
-                case LogLevel.Error:
-                    LogErrorInternal(message);
-                    break;
-                default:
-                    LogInfoInternal(message);
-                    break;
-            }
-        }
-
-        private void CallInternalLoggerWithArgs(LogLevel level, string message, object[] args)
+        private void CallInternalLogger(LogLevel level, string message, params object[] args)
         {
             switch (level)
             {
@@ -147,7 +125,7 @@ namespace GF.Log
         }
 
         [HideInCallstack]
-        public override void Log(Exception exception)
+        public void Log(Exception exception)
         {
             if (!CheckLogLevel(LogLevel.Error))
                 return;
@@ -157,7 +135,8 @@ namespace GF.Log
         [HideInCallstack]
         private bool CheckLogLevel(LogLevel level)
         {
-            return Enable && (int)level >= (int)EnableLevel;
+            //激活Log并且激活的LogLevel大于等于当前要打印的Level
+            return Enable && EnableLevel >= level;
         }
     }
 }
