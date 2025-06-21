@@ -7,12 +7,46 @@ using Debug = UnityEngine.Debug;
 
 namespace GF.Log
 {
-    public class UnityLogger : ILogger
+    public class UnityLogger : ILogger, IDisposable
     {
-        public UnityLogger() { }
+        private LogFileWriter _fileWriter;
+
+        public UnityLogger(bool enableFileOutput = false, string logFilePath = null) 
+        { 
+            if (enableFileOutput)
+            {
+                _fileWriter = new LogFileWriter(logFilePath);
+            }
+        }
 
         public bool Enable { get; set; } = true;
         public LogLevel EnableLevel { get; set; } = LogLevel.Debug;
+
+        /// <summary>
+        /// 是否启用文件输出
+        /// </summary>
+        public bool FileOutputEnabled => _fileWriter != null;
+
+        /// <summary>
+        /// 启用文件输出
+        /// </summary>
+        /// <param name="logFilePath">日志文件路径</param>
+        public void EnableFileOutput(string logFilePath = null)
+        {
+            if (_fileWriter == null)
+            {
+                _fileWriter = new LogFileWriter(logFilePath);
+            }
+        }
+
+        /// <summary>
+        /// 禁用文件输出
+        /// </summary>
+        public void DisableFileOutput()
+        {
+            _fileWriter?.Dispose();
+            _fileWriter = null;
+        }
 
         [HideInCallstack]
         public void Log(LogLevel level, string message, params object[] args)
@@ -20,8 +54,9 @@ namespace GF.Log
             if (!CheckLogLevel(level))
                 return;
 
+            // 写入Unity控制台
             // 如果有参数且需要格式化，先进行格式化
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
             {
                 if (StringFormatter.NeedsFormatting(message))
                 {
@@ -40,6 +75,9 @@ namespace GF.Log
                 // 没有参数，直接记录
                 CallInternalLogger(level, message);
             }
+
+            // 写入文件（如果启用）
+            _fileWriter?.WriteLog(level, message, args);
         }
 
         private void CallInternalLogger(LogLevel level, string message, params object[] args)
@@ -74,7 +112,7 @@ namespace GF.Log
         {
             if (!CheckLogLevel(LogLevel.Debug))
                 return;
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
                 UnityEngine.Debug.LogFormat(message, args);
             else
                 UnityEngine.Debug.Log(message);
@@ -89,7 +127,7 @@ namespace GF.Log
         {
             if (!CheckLogLevel(LogLevel.Info))
                 return;
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
                 UnityEngine.Debug.LogFormat(message, args);
             else
                 UnityEngine.Debug.Log(message);
@@ -104,7 +142,7 @@ namespace GF.Log
         {
             if (!CheckLogLevel(LogLevel.Warning))
                 return;
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
                 UnityEngine.Debug.LogWarningFormat(message, args);
             else
                 UnityEngine.Debug.LogWarning(message);
@@ -118,7 +156,7 @@ namespace GF.Log
         {
             if (!CheckLogLevel(LogLevel.Error))
                 return;
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
                 UnityEngine.Debug.LogErrorFormat(message, args);
             else
                 UnityEngine.Debug.LogError(message);
@@ -129,14 +167,36 @@ namespace GF.Log
         {
             if (!CheckLogLevel(LogLevel.Error))
                 return;
+            
+            // 写入Unity控制台
             UnityEngine.Debug.LogException(exception);
+            
+            // 写入文件（如果启用）
+            _fileWriter?.WriteException(exception);
         }
 
         [HideInCallstack]
         private bool CheckLogLevel(LogLevel level)
         {
             //激活Log并且激活的LogLevel大于等于当前要打印的Level
-            return Enable && EnableLevel >= level;
+            return Enable && EnableLevel <= level;
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+            _fileWriter?.Dispose();
+            _fileWriter = null;
+        }
+
+        /// <summary>
+        /// 析构函数
+        /// </summary>
+        ~UnityLogger()
+        {
+            Dispose();
         }
     }
 }

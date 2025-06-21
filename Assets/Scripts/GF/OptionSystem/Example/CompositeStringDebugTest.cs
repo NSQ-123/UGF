@@ -8,7 +8,7 @@ namespace GF.Option
     /// </summary>
     public static class CompositeStringDebugTest
     {
-        [RuntimeInitializeOnLoadMethod]
+        //[RuntimeInitializeOnLoadMethod]
         public static void DebugTest()
         {
             Debug.Log("=== 组合字符串调试测试 ===");

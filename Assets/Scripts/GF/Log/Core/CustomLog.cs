@@ -10,9 +10,13 @@ namespace GF.Log
     {
         private readonly string _tag;
         private readonly bool _enable;
-        private readonly bool _enableFileReport;
-        private readonly ILogger _logger;
+        private ILogger _logger;
         private static Dictionary<string, CustomLog> _allCustomLoggers;
+
+        /// <summary>
+        /// 延迟获取Logger实例，确保在使用时Logger已经初始化
+        /// </summary>
+        private ILogger Logger => _logger ??= Log.Logger;
 
         public static Dictionary<string, CustomLog> AllCustomLoggers
         {
@@ -25,40 +29,27 @@ namespace GF.Log
             _allCustomLoggers = new Dictionary<string, CustomLog>();
         }
 
-        public CustomLog(
-            string tag,
-            bool enable = false,
-            string tagColorStr = "",
-            bool enableFileReport = true
-        )
+        public CustomLog(string tag, bool enable = false, string tagColorStr = "")
         {
             if (!string.IsNullOrEmpty(tagColorStr) && tagColorStr.StartsWith("#"))
                 this._tag = $"<color={tagColorStr}>[{tag}]</color>";
             else
                 this._tag = $"[{tag}]";
-            this._logger = Log.Logger;
             this._enable = enable;
-            this._enableFileReport = enableFileReport;
             _allCustomLoggers[tag.ToLower()] = this;
         }
 
-        public CustomLog(
-            string tag,
-            bool enable = false,
-            Color tagColor = default,
-            bool enableFileReport = true
-        )
+        public CustomLog(string tag, bool enable = false, Color tagColor = default)
         {
             if (tagColor != default)
-            {
+            { 
                 var colorStr = ColorUtility.ToHtmlStringRGB(tagColor);
                 this._tag = $"<color=#{colorStr}>[{tag}]</color>";
             }
             else
                 this._tag = $"[{tag}]";
-            this._logger = Log.Logger;
+
             this._enable = enable;
-            this._enableFileReport = enableFileReport;
             _allCustomLoggers[tag.ToLower()] = this;
         }
 
@@ -68,7 +59,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Log(LogLevel.Debug,$"{_tag}{message}", args);
+            this.Logger.Log(LogLevel.Debug, $"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -77,7 +68,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Log(LogLevel.Info,$"{_tag}{message}", args);
+            this.Logger.Log(LogLevel.Info, $"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -88,7 +79,7 @@ namespace GF.Log
                 return;
             var colorStr = ColorUtility.ToHtmlStringRGB(color);
             var showMsg = $"{_tag}<color=#{colorStr}>{message}</color>";
-            this._logger.Log(LogLevel.Info,showMsg);
+            this.Logger.Log(LogLevel.Info, showMsg);
         }
 
         // 支持方法调用跟踪
@@ -96,9 +87,12 @@ namespace GF.Log
         [Conditional("LOG_ENABLE")]
         public void Trace(
             string message = null,
-            [System.Runtime.CompilerServices.CallerMemberName] string memberName = "",
-            [System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "",
-            [System.Runtime.CompilerServices.CallerLineNumber] int sourceLineNumber = 0
+            [System.Runtime.CompilerServices.CallerMemberName]
+            string memberName = "",
+            [System.Runtime.CompilerServices.CallerFilePath]
+            string sourceFilePath = "",
+            [System.Runtime.CompilerServices.CallerLineNumber]
+            int sourceLineNumber = 0
         )
         {
             if (!_enable)
@@ -109,7 +103,7 @@ namespace GF.Log
                 ? $"[TRACE] {fileName}.{memberName}:{sourceLineNumber}"
                 : $"[TRACE] {fileName}.{memberName}:{sourceLineNumber} - {message}";
 
-            this._logger.Log(LogLevel.Info,$"{_tag}{traceMsg}");
+            this.Logger.Log(LogLevel.Info, $"{_tag}{traceMsg}");
         }
 
         [HideInCallstack]
@@ -118,7 +112,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Log(LogLevel.Warning,$"{_tag}{message}", args);
+            this.Logger.Log(LogLevel.Warning, $"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -126,7 +120,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Log(LogLevel.Error,$"{_tag}{message}", args);
+            this.Logger.Log(LogLevel.Error, $"{_tag}{message}", args);
         }
 
         [HideInCallstack]
@@ -134,7 +128,7 @@ namespace GF.Log
         {
             if (!_enable)
                 return;
-            this._logger.Log(e);
+            this.Logger.Log(e);
         }
     }
 }

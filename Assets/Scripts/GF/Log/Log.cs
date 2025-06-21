@@ -9,30 +9,40 @@ namespace GF.Log
 {
     public static partial class Log
     {
-        public static ILogger Logger { get; private set; } = new UnityLogger();
-
+        
         static Log()
         {
             UnityEngine.Debug.developerConsoleEnabled = false;
             UnityEngine.Debug.developerConsoleVisible = false;
         }
-        
 
+        private static ILogger _logger;
+        public static ILogger Logger 
+        { 
+            get => _logger ??= new UnityLogger();
+            private set => _logger = value;
+        }
+
+        
+        public static bool Enable 
+        { 
+            get =>  Logger.Enable;
+            set =>  Logger.Enable = value;
+        }
+        
+        public static LogLevel EnableLevel 
+        { 
+            get =>  Logger.EnableLevel;
+            set =>  Logger.EnableLevel = value;
+        }
+
+        /// <summary>
+        /// 设置日志记录器
+        /// </summary>
+        /// <param name="logger">要设置的日志记录器</param>
         public static void SetLogger(ILogger logger)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        public static void SetEnable(bool enable)
-        {
-            if (Logger != null)
-                Logger.Enable = enable;
-        }
-
-        public static void SetEnableLevel(LogLevel level)
-        {
-            if (Logger != null)
-                Logger.EnableLevel = level;
         }
 
         /// <summary>

@@ -7,7 +7,7 @@ namespace GF.Option
     /// </summary>
     public static class SimpleCompositeTest
     {
-        [RuntimeInitializeOnLoadMethod]
+        //[RuntimeInitializeOnLoadMethod]
         public static void Test()
         {
             Debug.Log("=== 简单组合字符串测试 ===");
