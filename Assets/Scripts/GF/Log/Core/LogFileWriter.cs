@@ -1,145 +1,118 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace GF.Log
 {
+    public partial class LogFileWriter
+    {
+#if (UNITY_EDITOR || UNITY_STANDALONE)
+        private static readonly string ROOT_DIR = Application.dataPath + "/../";
+#else
+        private static readonly string ROOT_DIR = Application.persistentDataPath + "/";
+#endif
+        private static string DATA_DIR => $"{ROOT_DIR}user_data/";
+
+        /// <summary>
+        /// 日志数据类
+        /// </summary>
+        private class LogEntry
+        {
+            public string text;
+        }
+
+        private static readonly LogLevel STLogLevel = LogLevel.Error;
+    }
+
     /// <summary>
     /// 日志文件写入器 - 专门处理日志文件的写入操作
     /// </summary>
-    public class LogFileWriter : IDisposable
+    public partial class LogFileWriter : IDisposable
     {
         private readonly string _logFilePath;
-        private readonly long _maxFileSize;
-        private readonly int _maxBackupFiles;
         private readonly object _lockObject = new object();
         private StreamWriter _writer;
         private bool _disposed = false;
         private bool _enable = true;
+        private readonly string _customFolder;
+
+        // 缓存机制相关
+        private readonly List<LogEntry> _poolList = new List<LogEntry>();
+        private readonly List<LogEntry> _writeList = new List<LogEntry>();
+        private readonly object _writeLock = new object();
+        private bool _isProcessing = false;
+        private readonly ILogger _logger;
+        private long PlayerId => _logger.PlayerID;
 
         /// <summary>
         /// 是否启用文件写入
         /// </summary>
-        public bool Enable 
-        { 
-            get => _enable; 
-            set => _enable = value; 
+        public bool Enable
+        {
+            get => _enable;
+            set => _enable = value;
         }
 
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="logFilePath">日志文件路径，如果为空则使用默认路径</param>
-        /// <param name="maxFileSize">最大文件大小（字节），默认10MB</param>
-        /// <param name="maxBackupFiles">最大备份文件数量，默认5个</param>
-        public LogFileWriter(string logFilePath = null, long maxFileSize = 10 * 1024 * 1024, int maxBackupFiles = 5)
+        public LogFileWriter(ILogger logger, string customFolder = "")
         {
-            _maxFileSize = maxFileSize;
-            _maxBackupFiles = maxBackupFiles;
-            
-            if (string.IsNullOrEmpty(logFilePath))
-            {
-                // 使用默认路径：Application.persistentDataPath/Logs/
-                var logDir = Path.Combine(Application.persistentDataPath, "GameLogs");
-                var fileName = $"game_{DateTime.Now:yyyyMMdd}.log";
-                _logFilePath = Path.Combine(logDir, fileName);
-            }
-            else
-            {
-                _logFilePath = logFilePath;
-            }
-
-            InitializeLogFile();
+            _logger = logger;
+            _customFolder = string.IsNullOrEmpty(customFolder) ? "Default" : customFolder;
+            _logFilePath = InitializeLogFile();
+            // 启动处理协程（通过MonoBehaviour更新）
+            LogFileProcessor.Instance.RegisterWriter(this);
         }
 
         /// <summary>
         /// 初始化日志文件
         /// </summary>
-        private void InitializeLogFile()
+        private string InitializeLogFile()
         {
             try
             {
-                var directory = Path.GetDirectoryName(_logFilePath);
-                if (!Directory.Exists(directory))
+                var today = DateTime.Now.ToString("yyyy-MM-dd");
+                var startTime = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+
+                // 文件结构: user_data/playerId/Logs/当天的日期/自定义的文件夹/启动时间.log
+                var logDir = $"{DATA_DIR}{PlayerId}/Logs/{today}/{_customFolder}";
+
+                // 确保目录存在
+                if (!Directory.Exists(DATA_DIR))
+                    Directory.CreateDirectory(DATA_DIR);
+
+                var playerDir = $"{DATA_DIR}{PlayerId}";
+                if (!Directory.Exists(playerDir))
+                    Directory.CreateDirectory(playerDir);
+
+                var logsDir = $"{playerDir}/Logs";
+                if (!Directory.Exists(logsDir))
+                    Directory.CreateDirectory(logsDir);
+
+                var todayDir = $"{logsDir}/{today}";
+                if (!Directory.Exists(todayDir))
+                    Directory.CreateDirectory(todayDir);
+
+                if (!Directory.Exists(logDir))
+                    Directory.CreateDirectory(logDir);
+
+                var logFilePath = $"{logDir}/{startTime}.log";
+
+                // 初始化StreamWriter
+                lock (_lockObject)
                 {
-                    if (directory != null) Directory.CreateDirectory(directory);
-                    else
-                    {
-                        return;
-                    }
+                    _writer = new StreamWriter(logFilePath, false, Encoding.UTF8);
                 }
 
-                // 检查文件大小，如果需要则进行轮转
-                if (File.Exists(_logFilePath))
-                {
-                    var fileInfo = new FileInfo(_logFilePath);
-                    if (fileInfo.Length > _maxFileSize)
-                    {
-                        RotateLogFile();
-                    }
-                }
-
-                _writer = new StreamWriter(_logFilePath, true, Encoding.UTF8)
-                {
-                    AutoFlush = true
-                };
-
-                // 写入启动标记
-                _writer.WriteLine($"=== Log Session Started at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
+                return logFilePath;
             }
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogError($"Failed to initialize log file: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 轮转日志文件
-        /// </summary>
-        private void RotateLogFile()
-        {
-            try
-            {
-                _writer?.Close();
-                _writer?.Dispose();
-                _writer = null;
-
-                var directory = Path.GetDirectoryName(_logFilePath);
-                var fileNameWithoutExt = Path.GetFileNameWithoutExtension(_logFilePath);
-                var extension = Path.GetExtension(_logFilePath);
-
-                // 轮转现有的备份文件
-                for (int i = _maxBackupFiles - 1; i >= 1; i--)
-                {
-                    var oldBackupPath = Path.Combine(directory, $"{fileNameWithoutExt}.{i}{extension}");
-                    var newBackupPath = Path.Combine(directory, $"{fileNameWithoutExt}.{i + 1}{extension}");
-                    
-                    if (File.Exists(oldBackupPath))
-                    {
-                        if (i == _maxBackupFiles - 1)
-                        {
-                            File.Delete(oldBackupPath); // 删除最老的文件
-                        }
-                        else
-                        {
-                            if (File.Exists(newBackupPath))
-                                File.Delete(newBackupPath);
-                            File.Move(oldBackupPath, newBackupPath);
-                        }
-                    }
-                }
-
-                // 将当前日志文件重命名为 .1
-                var firstBackupPath = Path.Combine(directory, $"{fileNameWithoutExt}.1{extension}");
-                if (File.Exists(firstBackupPath))
-                    File.Delete(firstBackupPath);
-                File.Move(_logFilePath, firstBackupPath);
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.LogError($"Failed to rotate log file: {ex.Message}");
+                return null;
             }
         }
 
@@ -154,37 +127,66 @@ namespace GF.Log
             if (!_enable || _disposed)
                 return;
 
-            var formattedMessage = FormatLogMessage(level, message, args);
-            WriteToFile(formattedMessage);
+            var formattedMessage = FormatLogMessage(level, message, true, args);
+            WriteToCache(formattedMessage);
         }
 
         /// <summary>
         /// 写入异常日志到文件
         /// </summary>
-        /// <param name="exception">异常对象</param>
-        public void WriteException(Exception exception)
+        /// <param name="ex">异常对象</param>
+        public void WriteException(Exception ex)
         {
             if (!_enable || _disposed)
                 return;
 
-            var formattedMessage = FormatLogMessage(LogLevel.Error, 
-                $"Exception: {exception.Message}\nStackTrace:\n{exception.StackTrace}");
-            WriteToFile(formattedMessage);
+            // 格式化异常信息
+            var exceptionMessage = FormatExceptionMessage(ex);
+            var formattedMessage = FormatLogMessage(LogLevel.Error, exceptionMessage, false);
+            WriteToCache(formattedMessage);
         }
 
         /// <summary>
-        /// 异步写入日志到文件
+        /// 格式化异常信息
         /// </summary>
-        /// <param name="level">日志级别</param>
-        /// <param name="message">日志消息</param>
-        /// <param name="args">格式化参数</param>
-        public async Task WriteLogAsync(LogLevel level, string message, params object[] args)
+        /// <param name="ex">异常对象</param>
+        /// <returns>格式化后的异常信息</returns>
+        private string FormatExceptionMessage(Exception ex)
         {
-            if (!_enable || _disposed)
-                return;
+            var message = $"Exception: {ex.GetType().Name} - {ex.Message}";
 
-            var formattedMessage = FormatLogMessage(level, message, args);
-            await WriteToFileAsync(formattedMessage);
+            // 格式化异常详情
+            var details = new List<string>();
+
+            if (!string.IsNullOrEmpty(ex.Source))
+                details.Add($"Source: {ex.Source}");
+
+            if (ex.InnerException != null)
+                details.Add(
+                    $"InnerException: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}"
+                );
+
+            // 添加异常详情（如果有）
+            if (details.Count > 0)
+            {
+                var indentedDetails = string.Join("\n", details.Select(detail => $"    {detail}"));
+                message += $"\n    Exception Details:\n{indentedDetails}";
+            }
+
+            // 添加堆栈跟踪
+            if (!string.IsNullOrEmpty(ex.StackTrace))
+            {
+                var stackLines = ex.StackTrace.Split('\n');
+                var indentedStack = string.Join(
+                    "\n",
+                    stackLines.Select(line =>
+                        string.IsNullOrWhiteSpace(line) ? line : $"    {line.Trim()}"
+                    )
+                );
+                message += $"\n    StackTrace:\n{indentedStack}";
+            }
+
+            return message;
         }
 
         /// <summary>
@@ -192,26 +194,26 @@ namespace GF.Log
         /// </summary>
         /// <param name="level">日志级别</param>
         /// <param name="message">原始消息</param>
+        /// <param name="needST">是否需要堆栈跟踪</param>
         /// <param name="args">格式化参数</param>
         /// <returns>格式化后的消息</returns>
-        private string FormatLogMessage(LogLevel level, string message, params object[] args)
+        private string FormatLogMessage(
+            LogLevel level,
+            string message,
+            bool needST = true,
+            params object[] args
+        )
         {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var levelStr = level.ToString().ToUpper();
-            
+            var timestamp = TimeStampCache.GetTimestamp();
+            // 使用左对齐的完整级别名称，固定宽度为7个字符（WARNING是最长的）
+            var levelStr = level.ToString().ToUpper().PadRight(7);
+
             var actualMessage = message;
-            if (args != null && args.Length > 0)
+            if (args is { Length: > 0 })
             {
                 try
                 {
-                    if (StringFormatter.NeedsFormatting(message))
-                    {
-                        actualMessage = StringFormatter.SafeFormat(message, args);
-                    }
-                    else
-                    {
-                        actualMessage = string.Format(message, args);
-                    }
+                    actualMessage = string.Format(message, args);
                 }
                 catch (Exception)
                 {
@@ -219,45 +221,120 @@ namespace GF.Log
                 }
             }
 
-            return $"[{timestamp}] [{levelStr}] {actualMessage}";
+            if (needST && level >= STLogLevel)
+            {
+                StackTrace st = new StackTrace(4, true);
+                var stackLines = st.ToString().Split('\n');
+                var indentedStack = string.Join(
+                    "\n",
+                    stackLines.Select(line =>
+                        string.IsNullOrWhiteSpace(line) ? line : $"    {line.Trim()}"
+                    )
+                );
+                actualMessage = $"{actualMessage}\n    StackTrace:\n{indentedStack}";
+    
+            }
+            return $"[{timestamp}] [{levelStr}] {actualMessage}\n\n";
         }
 
         /// <summary>
-        /// 同步写入文件
+        /// 写入到缓存中，避免频繁IO
         /// </summary>
         /// <param name="message">要写入的消息</param>
-        private void WriteToFile(string message)
+        private void WriteToCache(string message)
         {
-            lock (_lockObject)
+            var logData = GetEmptyLogData();
+            logData.text = message;
+
+            lock (_writeLock)
             {
-                try
-                {
-                    if (_writer == null || _disposed)
-                        return;
-
-                    _writer.WriteLine(message);
-
-                    // 检查文件大小，如果需要则进行轮转
-                    if (_writer.BaseStream.Length > _maxFileSize)
-                    {
-                        RotateLogFile();
-                        InitializeLogFile();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to write to log file: {ex.Message}");
-                }
+                _writeList.Add(logData);
             }
         }
 
         /// <summary>
-        /// 异步写入文件
+        /// 获取空的LogData对象（对象池）
         /// </summary>
-        /// <param name="message">要写入的消息</param>
-        private async Task WriteToFileAsync(string message)
+        /// <returns></returns>
+        private LogEntry GetEmptyLogData()
         {
-            await Task.Run(() => WriteToFile(message));
+            lock (_poolList)
+            {
+                if (_poolList.Count > 0)
+                {
+                    var logEntry = _poolList[_poolList.Count - 1];
+                    _poolList.RemoveAt(_poolList.Count - 1);
+                    return logEntry;
+                }
+            }
+            // 在锁外创建新对象，减少锁定时间
+            return new LogEntry();
+        }
+
+        /// <summary>
+        /// 处理缓存的日志数据（由LogFileProcessor调用）
+        /// </summary>
+        internal void ProcessCachedLogs()
+        {
+            // 先检查是否需要处理，避免不必要的锁竞争
+            if (_disposed)
+                return;
+
+            List<LogEntry> logsToProcess = null;
+
+            // 在锁内检查和设置处理状态
+            lock (_writeLock)
+            {
+                if (_isProcessing || _writeList.Count == 0 || _disposed)
+                    return;
+
+                _isProcessing = true;
+
+                // 交换列表，减少锁定时间
+                logsToProcess = new List<LogEntry>(_writeList);
+                _writeList.Clear();
+            }
+
+            try
+            {
+                // 文件写入使用单独的锁
+                lock (_lockObject)
+                {
+                    if (_writer == null || _disposed)
+                        return;
+
+                    foreach (var logData in logsToProcess)
+                    {
+                        if (!string.IsNullOrEmpty(logData.text))
+                        {
+                            _writer.Write(logData.text);
+                            logData.text = string.Empty; // 清空文本
+                        }
+                    }
+                    _writer.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Failed to write logs: {ex.Message}");
+            }
+            finally
+            {
+                // 将LogData返回到对象池
+                if (logsToProcess != null)
+                {
+                    lock (_poolList)
+                    {
+                        _poolList.AddRange(logsToProcess);
+                    }
+                }
+
+                // 重置处理状态
+                lock (_writeLock)
+                {
+                    _isProcessing = false;
+                }
+            }
         }
 
         /// <summary>
@@ -265,17 +342,7 @@ namespace GF.Log
         /// </summary>
         public void Flush()
         {
-            lock (_lockObject)
-            {
-                try
-                {
-                    _writer?.Flush();
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to flush log file: {ex.Message}");
-                }
-            }
+            ProcessCachedLogs();
         }
 
         /// <summary>
@@ -287,23 +354,56 @@ namespace GF.Log
         }
 
         /// <summary>
+        /// 获取日志目录路径
+        /// </summary>
+        public string GetLogDirectory()
+        {
+            return string.IsNullOrEmpty(_logFilePath)
+                ? string.Empty
+                : Path.GetDirectoryName(_logFilePath);
+        }
+
+        /// <summary>
         /// 释放资源
         /// </summary>
         public void Dispose()
         {
-            if (_disposed)
-                return;
+            lock (_writeLock)
+            {
+                if (_disposed)
+                    return;
+                _disposed = true;
+            }
+
+            // 最后一次处理缓存的日志
+            ProcessCachedLogs();
+
+            // 注销处理器
+            LogFileProcessor.Instance?.UnregisterWriter(this);
 
             lock (_lockObject)
             {
-                if (_writer != null)
+                try
                 {
-                    _writer.WriteLine($"=== Log Session Ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
-                    _writer.Close();
-                    _writer.Dispose();
+                    _writer?.Close();
+                    _writer?.Dispose();
                     _writer = null;
                 }
-                _disposed = true;
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"Error disposing LogFileWriter: {ex.Message}");
+                }
+            }
+
+            // 清理缓存列表
+            lock (_writeLock)
+            {
+                _writeList.Clear();
+            }
+
+            lock (_poolList)
+            {
+                _poolList.Clear();
             }
         }
 
@@ -315,4 +415,75 @@ namespace GF.Log
             Dispose();
         }
     }
-} 
+
+    /// <summary>
+    /// 日志文件处理器 - 单例，负责定期处理所有LogFileWriter的缓存
+    /// </summary>
+    public class LogFileProcessor : MonoBehaviour
+    {
+        private static LogFileProcessor _instance;
+        public static LogFileProcessor Instance
+        {
+            get
+            {
+                if (_instance)
+                    return _instance;
+                var go = new GameObject("LogFileProcessor");
+                _instance = go.AddComponent<LogFileProcessor>();
+                DontDestroyOnLoad(go);
+                return _instance;
+            }
+        }
+
+        private readonly List<LogFileWriter> _writers = new List<LogFileWriter>();
+        private readonly object _writersLock = new object();
+
+        public void RegisterWriter(LogFileWriter writer)
+        {
+            lock (_writersLock)
+            {
+                if (!_writers.Contains(writer))
+                {
+                    _writers.Add(writer);
+                }
+            }
+        }
+
+        public void UnregisterWriter(LogFileWriter writer)
+        {
+            lock (_writersLock)
+            {
+                _writers.Remove(writer);
+            }
+        }
+
+        private void Update()
+        {
+            lock (_writersLock)
+            {
+                foreach (var writer in _writers.Where(writer => writer != null))
+                {
+                    writer.ProcessCachedLogs();
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            // 清理所有writers
+            lock (_writersLock)
+            {
+                foreach (var writer in _writers)
+                {
+                    writer?.Flush();
+                }
+                _writers.Clear();
+            }
+
+            if (_instance == this)
+            {
+                _instance = null;
+            }
+        }
+    }
+}
