@@ -8,3 +8,5 @@ obj
 Logs
 *.sln
 UserSettings
+Bundles
+ProjectSettings/SceneTemplateSettings.json
