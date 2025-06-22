@@ -47,30 +47,30 @@ namespace GF.RedPoint.Example
             // 监听红点状态变化（是否显示红点）
             RedPointHelper.Watch("mail", hasRedPoint => {
                 if (mailIcon != null)
-                    mailIcon.SetActive(hasRedPoint);
+                    mailIcon.SetActive(hasRedPoint>0);
                 Debug.Log($"邮件红点: {hasRedPoint}");
             });
 
             RedPointHelper.Watch("task", hasRedPoint => {
                 if (taskIcon != null)
-                    taskIcon.SetActive(hasRedPoint);
+                    taskIcon.SetActive(hasRedPoint>0);
                 Debug.Log($"任务红点: {hasRedPoint}");
             });
 
             RedPointHelper.Watch("shop", hasRedPoint => {
                 if (shopIcon != null)
-                    shopIcon.SetActive(hasRedPoint);
+                    shopIcon.SetActive(hasRedPoint>0);
                 Debug.Log($"商店红点: {hasRedPoint}");
             });
 
             RedPointHelper.Watch("main_menu", hasRedPoint => {
                 if (mainMenuIcon != null)
-                    mainMenuIcon.SetActive(hasRedPoint);
+                    mainMenuIcon.SetActive(hasRedPoint>0);
                 Debug.Log($"主菜单红点: {hasRedPoint}");
             });
 
             // 监听红点数量变化
-            RedPointHelper.WatchCount("mail", count => {
+            RedPointHelper.Watch("mail", count => {
                 Debug.Log($"邮件数量: {count}");
             });
         }

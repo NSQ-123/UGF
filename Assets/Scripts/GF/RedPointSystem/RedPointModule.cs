@@ -53,25 +53,17 @@ namespace GF.RedPoint
         /// 初始化时默认注册的红点
         /// 注意：此处注册的红点没有获取红点信息Func
         /// </summary>
-        private readonly HashSet<string> _defaultRedPoint = new HashSet<string> { };
+        private readonly HashSet<string> _defaultRedPoint = new () { };
 
         /// <summary>
         /// 初始化时默认添加的红点关系，key:子级, value:父级
         /// </summary>
-        private readonly Dictionary<string, List<string>> _defaultRelation = new Dictionary<
-            string,
-            List<string>
-        >
-        { };
+        private readonly Dictionary<string, List<string>> _defaultRelation = new () { };
 
         /// <summary>
         /// 初始化时默认添加的反向红点关系, key:父级, value: 子级
         /// </summary>
-        private readonly Dictionary<string, List<string>> _defaultReverseRelation = new Dictionary<
-            string,
-            List<string>
-        >
-        { };
+        private readonly Dictionary<string, List<string>> _defaultReverseRelation = new () { };
         #endregion const
 
         /// <summary>
@@ -295,19 +287,12 @@ namespace GF.RedPoint
         /// <param name="refreshCallBack">刷新回调</param>
         /// <param name="invokeRefresh">是否立即刷新</param>
         /// <param name="showErrLog">是否显示错误日志</param>
-        public void BindRefreshAct(
-            string key,
-            Action<string, int> refreshCallBack,
-            bool invokeRefresh = true,
-            bool showErrLog = true
-        )
+        public void BindRefreshAct(string key, Action<string, int> refreshCallBack, bool invokeRefresh = true, bool showErrLog = true)
         {
             if (string.IsNullOrEmpty(key) || refreshCallBack == null)
             {
                 if (showErrLog)
-                    Debug.LogError(
-                        "RedPointModule::BindRefreshAct Error, key or callback is null!"
-                    );
+                    Debug.LogError("RedPointModule::BindRefreshAct Error, key or callback is null!");
                 return;
             }
 
@@ -375,12 +360,7 @@ namespace GF.RedPoint
         /// <param name="key">红点key</param>
         /// <param name="numDelta">红点变化数量</param>
         /// <param name="depth">当前递归深度</param>
-        private void CheckRelationRedPoint(
-            HashSet<string> passedMap,
-            string key,
-            int numDelta,
-            int depth
-        )
+        private void CheckRelationRedPoint(HashSet<string> passedMap, string key, int numDelta, int depth)
         {
             if (depth > MAX_RECURSION_DEPTH)
             {
@@ -506,11 +486,7 @@ namespace GF.RedPoint
             return false;
         }
 
-        private bool HasCircularDependencyHelper(
-            string key,
-            HashSet<string> visitedNodes,
-            HashSet<string> pathNodes
-        )
+        private bool HasCircularDependencyHelper(string key, HashSet<string> visitedNodes, HashSet<string> pathNodes)
         {
             if (pathNodes.Contains(key))
                 return true;

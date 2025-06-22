@@ -109,34 +109,12 @@ namespace GF.RedPoint
         }
 
         /// <summary>
-        /// 监听特定红点变化（是否有红点）
-        /// </summary>
-        /// <param name="key">红点标识</param>
-        /// <param name="callback">回调函数，参数为是否有红点</param>
-        /// <param name="invokeImmediately">是否立即调用一次</param>
-        public static void Watch(string key, System.Action<bool> callback, bool invokeImmediately = true)
-        {
-            if (callback == null)
-                return;
-
-            Module?.BindRefreshAct(
-                key,
-                (k, count) => callback(count > 0),
-                invokeImmediately
-            );
-        }
-
-        /// <summary>
         /// 监听特定红点变化（数量）
         /// </summary>
         /// <param name="key">红点标识</param>
         /// <param name="callback">回调函数，参数为红点数量</param>
         /// <param name="invokeImmediately">是否立即调用一次</param>
-        public static void WatchCount(
-            string key,
-            System.Action<int> callback,
-            bool invokeImmediately = true
-        )
+        public static void Watch(string key, System.Action<int> callback, bool invokeImmediately = true)
         {
             if (callback == null)
                 return;
@@ -145,24 +123,11 @@ namespace GF.RedPoint
         }
 
         /// <summary>
-        /// 取消监听
-        /// </summary>
-        /// <param name="key">红点标识</param>
-        /// <param name="callback">要取消的回调</param>
-        public static void Unwatch(string key, System.Action<bool> callback)
-        {
-            if (callback == null)
-                return;
-
-            Module?.UnbindRefreshAct(key, (k, count) => callback(count > 0));
-        }
-
-        /// <summary>
         /// 取消监听（数量）
         /// </summary>
         /// <param name="key">红点标识</param>
         /// <param name="callback">要取消的回调</param>
-        public static void UnwatchCount(string key, System.Action<int> callback)
+        public static void Unwatch(string key, System.Action<int> callback)
         {
             if (callback == null)
                 return;
