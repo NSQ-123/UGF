@@ -1,27 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 namespace GF.RedPoint
 {
-    /// <summary>
-    /// 红点类型枚举
-    /// </summary>
-    public enum ERedPointType
-    {
-        /// <summary>
-        /// 计数型红点
-        /// 记录每级红点数量，传播时计数为对应count
-        /// </summary>
-        Count,
-
-        /// <summary>
-        /// 状态型红点
-        /// 记录是否有红点，传播时计数为0或1
-        /// </summary>
-        State,
-    }
-
     /// <summary>
     /// 红点数据
     /// </summary>
@@ -30,24 +11,53 @@ namespace GF.RedPoint
         /// <summary>
         /// 红点key
         /// </summary>
-        public string RedPointKey;
+        public string RedPointKey { get; set; }
 
         /// <summary>
         /// 获取红点信息Func
         /// </summary>
-        public System.Func<int> CheckFunc;
-
+        public System.Func<int> CheckFunc { get; set; }
 
         /// <summary>
         /// 计数数量
-        /// 计数型为对应count
-        /// 状态型计数为0或1
         /// </summary>
-        public int Num;
+        public int Num { get; set; }
+
+        /// <summary>
+        /// 是否已释放
+        /// </summary>
+        public bool IsDisposed { get; private set; }
+
+        /// <summary>
+        /// 获取当前红点数量
+        /// </summary>
+        /// <returns></returns>
+        public int GetCurrentNum()
+        {
+            if (IsDisposed || CheckFunc == null)
+                return 0;
+
+            try
+            {
+                int result = CheckFunc();
+                return result > 0 ? result : 0;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"RedPoint CheckFunc Error for key '{RedPointKey}': {ex.Message}");
+                return 0;
+            }
+        }
 
         public void Dispose()
         {
+            if (IsDisposed)
+                return;
+
             CheckFunc = null;
+            RedPointKey = null;
+            Num = 0;
+            IsDisposed = true;
         }
     }
 }

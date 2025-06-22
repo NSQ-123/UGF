@@ -1,12 +1,10 @@
-using System.Collections.Generic;
-using UnityEngine;
-using System.Linq;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 
 namespace GF.RedPoint
 {
-
-
     /// <summary>
     /// 红点模块
     /// 红点之间的关联影响：本质上是构建了一个有向图，当某一个节点的红点发生变更时，会同时更新它所关联的红点，并按照图的有向边扩散这个更新
@@ -40,12 +38,14 @@ namespace GF.RedPoint
 
         /// <summary>
         /// 红点刷新回调
-        ///     key: 红点key值
-        ///     value: 刷新回调
-        ///        param string: 红点key
-        ///        param int: 对应红点数量
+        /// 使用HashSet存储回调方法，避免重复回调和提高查找效率
         /// </summary>
-        private Dictionary<string, Action<string, int>> _allRefreshCallback;
+        private Dictionary<string, HashSet<Action<string, int>>> _allRefreshCallbacks;
+
+        /// <summary>
+        /// 最大递归深度限制
+        /// </summary>
+        private const int MAX_RECURSION_DEPTH = 50;
 
         #region const
 
@@ -53,29 +53,26 @@ namespace GF.RedPoint
         /// 初始化时默认注册的红点
         /// 注意：此处注册的红点没有获取红点信息Func
         /// </summary>
-        private readonly HashSet<string> _defaultRedPoint = new HashSet<string>
-        {
-
-        };
-
+        private readonly HashSet<string> _defaultRedPoint = new HashSet<string> { };
 
         /// <summary>
         /// 初始化时默认添加的红点关系，key:子级, value:父级
         /// </summary>
-        private readonly Dictionary<string, List<string>> _defaultRelation = new Dictionary<string, List<string>>
-        {
-
-        };
+        private readonly Dictionary<string, List<string>> _defaultRelation = new Dictionary<
+            string,
+            List<string>
+        >
+        { };
 
         /// <summary>
         /// 初始化时默认添加的反向红点关系, key:父级, value: 子级
         /// </summary>
-        private readonly Dictionary<string, List<string>> _defaultReverseRelation = new Dictionary<string, List<string>>
-        {
-           
-        };
+        private readonly Dictionary<string, List<string>> _defaultReverseRelation = new Dictionary<
+            string,
+            List<string>
+        >
+        { };
         #endregion const
-
 
         /// <summary>
         /// 零时红点
@@ -88,8 +85,8 @@ namespace GF.RedPoint
                 _allRedPointDict = new Dictionary<string, RedPointData>();
             if (_allRelationSetDict == null)
                 _allRelationSetDict = new Dictionary<string, HashSet<string>>();
-            if (_allRefreshCallback == null)
-                _allRefreshCallback = new Dictionary<string, Action<string, int>>();
+            if (_allRefreshCallbacks == null)
+                _allRefreshCallbacks = new Dictionary<string, HashSet<Action<string, int>>>();
             if (_allGroups == null)
                 _allGroups = new Dictionary<string, HashSet<string>>();
 
@@ -120,19 +117,16 @@ namespace GF.RedPoint
         public void Dispose()
         {
             ClearRedPointData();
-            _tempRedPointData = null;
             _allRedPointDict = null;
             _allRelationSetDict = null;
-            _allRefreshCallback = null;
+            _allRefreshCallbacks = null;
             _allGroups = null;
         }
-
 
         public void Clear()
         {
             ClearRedPointData();
         }
-
 
         private void ClearRedPointData()
         {
@@ -140,22 +134,22 @@ namespace GF.RedPoint
             {
                 foreach (var pair in _allRedPointDict)
                     pair.Value?.Dispose();
-                _allRedPointDict?.Clear();
+                _allRedPointDict.Clear();
             }
 
             if (_allRelationSetDict != null)
             {
                 foreach (var pair in _allRelationSetDict)
-                    _allRelationSetDict[pair.Key]?.Clear();
+                    pair.Value?.Clear();
                 _allRelationSetDict.Clear();
             }
 
-            if (_allRefreshCallback != null && _allRefreshCallback.Count > 0)
+            if (_allRefreshCallbacks != null)
             {
-                foreach (var key in _allRefreshCallback.Keys.ToList())
-                    _allRefreshCallback[key] = null;
+                foreach (var pair in _allRefreshCallbacks)
+                    pair.Value?.Clear();
+                _allRefreshCallbacks.Clear();
             }
-            _allRefreshCallback?.Clear();
 
             if (_allGroups != null)
             {
@@ -169,14 +163,25 @@ namespace GF.RedPoint
         /// 动态注册红点信息
         /// </summary>
         /// <param name="key">红点key</param>
+        /// <param name="checkFunc">检查函数</param>
+        /// <param name="relation">关联的红点key</param>
         /// <param name="groups">所属group，暂时没用</param>
-        /// <param name="relations">由该红点指向的其他红点的keys</param>
+        /// <param name="showErrLog">是否显示错误日志</param>
         public void RegisterRedPoint(string key, Func<int> checkFunc, string relation = null, List<string> groups = null, bool showErrLog = false)
         {
-            if (_allRedPointDict.TryGetValue(key, out _tempRedPointData))
+            if (string.IsNullOrEmpty(key))
             {
                 if (showErrLog)
-                    Debug.LogError("RedPointModule::Register Error, Register Existed Key:" + key + "!");
+                    Debug.LogError("RedPointModule::Register Error, Key is null or empty!");
+                return;
+            }
+
+            if (_allRedPointDict.ContainsKey(key))
+            {
+                if (showErrLog)
+                    Debug.LogError(
+                        "RedPointModule::Register Error, Register Existed Key:" + key + "!"
+                    );
                 return;
             }
 
@@ -184,7 +189,7 @@ namespace GF.RedPoint
             {
                 RedPointKey = key,
                 CheckFunc = checkFunc,
-                Num = 0
+                Num = 0,
             };
 
             if (groups != null)
@@ -196,9 +201,12 @@ namespace GF.RedPoint
                     _allGroups[group].Add(key);
                 }
             }
-            AddRedPointRelation(key, relation);
-        }
 
+            if (!string.IsNullOrEmpty(relation))
+            {
+                AddRedPointRelation(key, relation);
+            }
+        }
 
         /// <summary>
         /// 移除注册的红点，同时会移除对应刷新事件
@@ -206,43 +214,42 @@ namespace GF.RedPoint
         /// todo: 未清除relation中相应key
         /// </summary>
         /// <param name="key">红点key</param>
+        /// <param name="needRefresh">是否需要刷新</param>
         public void UnregisterRedPoint(string key, bool needRefresh = true)
         {
+            if (string.IsNullOrEmpty(key))
+                return;
+
             if (_allRedPointDict.TryGetValue(key, out RedPointData data))
             {
                 // 移除红点，则计算数量为0
-                data.CheckFunc = RemoveCallback;
-
-                // 相应回调置为空
-                if (_allRefreshCallback.ContainsKey(key))
-                    _allRefreshCallback[key] = null;
+                var originalCheckFunc = data.CheckFunc;
+                data.CheckFunc = () => 0;
 
                 if (needRefresh)
                     RefreshRedPoint(key);
 
-                data.CheckFunc = null;
-
+                data.Dispose();
                 _allRedPointDict.Remove(key);
             }
 
-            // 外部也清空一次，相应回调置为空
-            if (_allRefreshCallback.ContainsKey(key))
-                _allRefreshCallback[key] = null;
-            _allRefreshCallback.Remove(key);
+            // 清除回调
+            if (_allRefreshCallbacks.ContainsKey(key))
+            {
+                _allRefreshCallbacks[key].Clear();
+                _allRefreshCallbacks.Remove(key);
+            }
 
+            // 从组中移除
             if (_allGroups != null)
             {
-                foreach (string group in _allGroups.Keys)
+                foreach (var group in _allGroups.Keys.ToArray())
+                {
                     _allGroups[group].Remove(key);
+                    if (_allGroups[group].Count == 0)
+                        _allGroups.Remove(group);
+                }
             }
-        }
-
-        /// <summary>
-        /// 移除红点时所用的callback，主要用于移除红点时，使对应data红点数量为0
-        /// </summary>
-        private int RemoveCallback()
-        {
-            return 0;
         }
 
         /// <summary>
@@ -252,7 +259,7 @@ namespace GF.RedPoint
         /// <param name="relation">指向的其他红点的key</param>
         public void AddRedPointRelation(string key, string relation)
         {
-            if (string.IsNullOrEmpty(relation))
+            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(relation))
                 return;
 
             if (!_allRelationSetDict.ContainsKey(key))
@@ -267,7 +274,7 @@ namespace GF.RedPoint
         /// <param name="relations">由该红点指向的其他红点的keys</param>
         public void AddRedPointRelation(string key, List<string> relations)
         {
-            if (relations == null)
+            if (string.IsNullOrEmpty(key) || relations == null || relations.Count == 0)
                 return;
 
             if (!_allRelationSetDict.ContainsKey(key))
@@ -275,42 +282,60 @@ namespace GF.RedPoint
 
             HashSet<string> relationSet = _allRelationSetDict[key];
             foreach (string v in relations)
-                relationSet.Add(v);
+            {
+                if (!string.IsNullOrEmpty(v))
+                    relationSet.Add(v);
+            }
         }
 
         /// <summary>
         /// 绑定红点刷新回调
         /// </summary>
-        /// <param name="key"></param>
+        /// <param name="key">红点key</param>
         /// <param name="refreshCallBack">刷新回调</param>
-        public void BindRefreshAct(string key, Action<string, int> refreshCallBack, bool invokeRefresh = true, bool showErrLog = true)
+        /// <param name="invokeRefresh">是否立即刷新</param>
+        /// <param name="showErrLog">是否显示错误日志</param>
+        public void BindRefreshAct(
+            string key,
+            Action<string, int> refreshCallBack,
+            bool invokeRefresh = true,
+            bool showErrLog = true
+        )
         {
-            if (refreshCallBack == null)
+            if (string.IsNullOrEmpty(key) || refreshCallBack == null)
+            {
+                if (showErrLog)
+                    Debug.LogError(
+                        "RedPointModule::BindRefreshAct Error, key or callback is null!"
+                    );
                 return;
+            }
 
-            if (!_allRefreshCallback.TryGetValue(key, out var callBacks))
-                callBacks = null;
+            if (!_allRefreshCallbacks.ContainsKey(key))
+                _allRefreshCallbacks[key] = new HashSet<Action<string, int>>();
 
-            // 回调列表为空，或者不为空但不包含该回调时，可添加
-            if (callBacks == null || !callBacks.GetInvocationList().Contains(refreshCallBack))
-                callBacks += refreshCallBack;
-            _allRefreshCallback[key] = callBacks;
+            // 使用HashSet自动处理重复
+            _allRefreshCallbacks[key].Add(refreshCallBack);
 
-            if (invokeRefresh && _allRedPointDict.TryGetValue(key, out _tempRedPointData))
-                refreshCallBack(key, _tempRedPointData.Num);
+            if (invokeRefresh && _allRedPointDict.TryGetValue(key, out var redPointData))
+                refreshCallBack(key, redPointData.Num);
         }
 
         /// <summary>
         /// 删除红点刷新回调
         /// </summary>
+        /// <param name="key">红点key</param>
+        /// <param name="refreshCallBack">要删除的回调</param>
         public void UnbindRefreshAct(string key, Action<string, int> refreshCallBack)
         {
-            if (_allRefreshCallback == null)
+            if (string.IsNullOrEmpty(key) || refreshCallBack == null)
                 return;
-            if (_allRefreshCallback.TryGetValue(key, out var callBacks))
+
+            if (_allRefreshCallbacks?.TryGetValue(key, out var callbacks) == true)
             {
-                callBacks -= refreshCallBack;
-                _allRefreshCallback[key] = callBacks;
+                callbacks.Remove(refreshCallBack);
+                if (callbacks.Count == 0)
+                    _allRefreshCallbacks.Remove(key);
             }
         }
 
@@ -318,7 +343,7 @@ namespace GF.RedPoint
         /// 刷新指定红点
         /// 刷新会使红点数量变化信息，沿有向图传播
         /// </summary>
-        /// <param name="key"></param>
+        /// <param name="key">红点key</param>
         public void RefreshRedPoint(string key)
         {
             if (string.IsNullOrEmpty(key))
@@ -329,8 +354,10 @@ namespace GF.RedPoint
                 return;
             }
 
-            int num = redPoint.CheckFunc == null ? redPoint.Num : redPoint.CheckFunc();
-            num = num > 0 ? num : 0;
+            if (redPoint.IsDisposed)
+                return;
+
+            int num = redPoint.GetCurrentNum();
 
             // 红点数量未发生变化时不须广播
             if (redPoint.Num == num)
@@ -338,18 +365,29 @@ namespace GF.RedPoint
 
             int numDelta = num - redPoint.Num;
             RefreshRedPointState(key, num);
-            CheckRelationRedPoint(new HashSet<string>(), key, numDelta);
+            CheckRelationRedPoint(new HashSet<string>(), key, numDelta, 0);
         }
-
 
         /// <summary>
         /// 递归刷新有向图上的红点信息
         /// </summary>
-        /// <param name="passedMap"></param>
+        /// <param name="passedMap">已访问的节点集合</param>
         /// <param name="key">红点key</param>
         /// <param name="numDelta">红点变化数量</param>
-        private void CheckRelationRedPoint(HashSet<string> passedMap, string key, int numDelta)
+        /// <param name="depth">当前递归深度</param>
+        private void CheckRelationRedPoint(
+            HashSet<string> passedMap,
+            string key,
+            int numDelta,
+            int depth
+        )
         {
+            if (depth > MAX_RECURSION_DEPTH)
+            {
+                Debug.LogError($"RedPoint recursion depth exceeded for key: {key}");
+                return;
+            }
+
             if (passedMap.Contains(key))
             {
                 Debug.LogError("Config Error, Circle appeared in relation:" + key + "!");
@@ -357,10 +395,12 @@ namespace GF.RedPoint
             }
             passedMap.Add(key);
 
-            if (!_allRelationSetDict.ContainsKey(key))
+            if (!_allRelationSetDict.TryGetValue(key, out var relations) || relations.Count == 0)
+            {
+                passedMap.Remove(key);
                 return;
+            }
 
-            HashSet<string> relations = _allRelationSetDict[key];
             foreach (string relationKey in relations)
             {
                 if (!_allRedPointDict.TryGetValue(relationKey, out var redPoint))
@@ -368,35 +408,130 @@ namespace GF.RedPoint
                     // Debug.LogError($"Relation Error, Relation RedPoint Not Register In: {relationKey} !");
                     continue;
                 }
+
+                if (redPoint.IsDisposed)
+                    continue;
+
                 RefreshRedPointState(relationKey, redPoint.Num + numDelta);
-                CheckRelationRedPoint(passedMap, relationKey, numDelta);
+                CheckRelationRedPoint(passedMap, relationKey, numDelta, depth + 1);
             }
+
+            passedMap.Remove(key);
         }
 
+        /// <summary>
+        /// 刷新红点状态
+        /// </summary>
+        /// <param name="key">红点key</param>
+        /// <param name="num">新的数量</param>
         private void RefreshRedPointState(string key, int num)
         {
             // 更新数量
-            if (_allRedPointDict.TryGetValue(key, out _tempRedPointData))
+            if (_allRedPointDict.TryGetValue(key, out var redPointData))
             {
-                _tempRedPointData.Num = num;
+                redPointData.Num = num;
             }
 
             // 刷新回调
-            if (_allRefreshCallback.TryGetValue(key, out var callbacks))
+            if (_allRefreshCallbacks.TryGetValue(key, out var callbacks) && callbacks.Count > 0)
             {
-                // Debug.LogError($"RefreshRedPointState: {key}, {num}");
-                callbacks?.Invoke(key, num);
+                // 复制回调集合以避免在回调中修改原集合导致的问题
+                var callbacksCopy = new HashSet<Action<string, int>>(callbacks);
+                foreach (var callback in callbacksCopy)
+                {
+                    try
+                    {
+                        callback?.Invoke(key, num);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"RedPoint callback error for key '{key}': {ex.Message}");
+                    }
+                }
             }
         }
 
         /// <summary>
         /// 获取红点数量
         /// </summary>
+        /// <param name="key">红点key</param>
+        /// <returns>红点数量</returns>
         public int GetRedPointNum(string key)
         {
-            if (_allRedPointDict.ContainsKey(key))
-                return _allRedPointDict[key].Num;
+            if (string.IsNullOrEmpty(key))
+                return 0;
+
+            if (_allRedPointDict.TryGetValue(key, out var redPointData))
+                return redPointData.IsDisposed ? 0 : redPointData.Num;
+
             return 0;
+        }
+
+        /// <summary>
+        /// 批量刷新红点
+        /// </summary>
+        /// <param name="keys">要刷新的红点key列表</param>
+        public void RefreshRedPoints(params string[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+                return;
+
+            var processedKeys = new HashSet<string>();
+
+            foreach (string key in keys)
+            {
+                if (!processedKeys.Contains(key))
+                {
+                    RefreshRedPoint(key);
+                    processedKeys.Add(key);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 检查红点系统是否存在循环依赖
+        /// </summary>
+        /// <returns>是否存在循环依赖</returns>
+        public bool HasCircularDependency()
+        {
+            var visitedNodes = new HashSet<string>();
+            var pathNodes = new HashSet<string>();
+
+            foreach (var key in _allRelationSetDict.Keys)
+            {
+                if (HasCircularDependencyHelper(key, visitedNodes, pathNodes))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool HasCircularDependencyHelper(
+            string key,
+            HashSet<string> visitedNodes,
+            HashSet<string> pathNodes
+        )
+        {
+            if (pathNodes.Contains(key))
+                return true;
+
+            if (visitedNodes.Contains(key))
+                return false;
+
+            visitedNodes.Add(key);
+            pathNodes.Add(key);
+
+            if (_allRelationSetDict.TryGetValue(key, out var relations))
+            {
+                foreach (var relation in relations)
+                {
+                    if (HasCircularDependencyHelper(relation, visitedNodes, pathNodes))
+                        return true;
+                }
+            }
+
+            pathNodes.Remove(key);
+            return false;
         }
 
 #if UNITY_EDITOR
@@ -406,57 +541,83 @@ namespace GF.RedPoint
         public void PrintGraph()
         {
             var stringBuilder = new System.Text.StringBuilder();
-            stringBuilder.AppendLine($"=============== RedPoint Ralations =============");
-            // ralations
+            stringBuilder.AppendLine($"=============== RedPoint Relations =============");
+
+            // relations
             foreach (var key in _allRelationSetDict.Keys)
             {
                 stringBuilder.AppendLine($"--- {key} ---");
-                PrintNode(new HashSet<string>(), key, stringBuilder);
+                PrintNode(new HashSet<string>(), key, stringBuilder, 0);
             }
             Debug.Log($"[RedPoint]=>{stringBuilder.ToString()}");
 
-            // node
+            // nodes
             stringBuilder.Clear();
             stringBuilder.AppendLine($"=============== RedPoint Nodes =============");
             foreach (var redPointPair in _allRedPointDict)
             {
-                stringBuilder.AppendLine($"key: {redPointPair.Key}, num: {redPointPair.Value.Num}");
+                stringBuilder.AppendLine(
+                    $"key: {redPointPair.Key}, num: {redPointPair.Value.Num}, disposed: {redPointPair.Value.IsDisposed}"
+                );
             }
 
+            // callbacks
             stringBuilder.Clear();
             stringBuilder.AppendLine($"=============== RedPoint CallBacks =============");
-            int callbackCount = 0;
-            foreach (var redPointPair in _allRefreshCallback)
+            foreach (var redPointPair in _allRefreshCallbacks)
             {
-                callbackCount = (_allRefreshCallback.ContainsKey(redPointPair.Key) && _allRefreshCallback[redPointPair.Key] != null) ? _allRefreshCallback[redPointPair.Key].GetInvocationList().Length : 0;
-                stringBuilder.AppendLine($"key: {redPointPair.Key}, callbacks count: {callbackCount}");
+                int callbackCount = redPointPair.Value?.Count ?? 0;
+                stringBuilder.AppendLine(
+                    $"key: {redPointPair.Key}, callbacks count: {callbackCount}"
+                );
             }
 
             Debug.Log(stringBuilder.ToString());
+
+            // 检查循环依赖
+            if (HasCircularDependency())
+            {
+                Debug.LogError("RedPoint system has circular dependency!");
+            }
         }
 
-        private void PrintNode(HashSet<string> passedMap, string key, System.Text.StringBuilder stringBuilder)
+        private void PrintNode(
+            HashSet<string> passedMap,
+            string key,
+            System.Text.StringBuilder stringBuilder,
+            int depth
+        )
         {
+            if (depth > MAX_RECURSION_DEPTH)
+            {
+                stringBuilder.AppendLine($"Max recursion depth reached for: {key}");
+                return;
+            }
+
             if (passedMap.Contains(key))
             {
-                Debug.LogError("ConfigError,Circle appeared in relation:" + key + "!");
+                Debug.LogError("ConfigError, Circle appeared in relation:" + key + "!");
                 return;
             }
 
-            if (!_allRelationSetDict.ContainsKey(key))
+            if (!_allRelationSetDict.TryGetValue(key, out var relations))
                 return;
 
-            HashSet<string> relations = _allRelationSetDict[key];
+            passedMap.Add(key);
+
             foreach (string relationKey in relations)
             {
-                RedPointData redPoint = _allRedPointDict[relationKey];
-                stringBuilder.AppendLine($"{redPoint.RedPointKey}: {redPoint.Num}");
-                PrintNode(passedMap, relationKey, stringBuilder);
+                if (_allRedPointDict.TryGetValue(relationKey, out var redPoint))
+                {
+                    stringBuilder.AppendLine(
+                        $"{"  ".PadLeft(depth * 2)}{redPoint.RedPointKey}: {redPoint.Num}"
+                    );
+                    PrintNode(passedMap, relationKey, stringBuilder, depth + 1);
+                }
             }
+
+            passedMap.Remove(key);
         }
-
-
 #endif
-
     }
 }
