@@ -134,12 +134,15 @@ namespace GF.RedPoint.Example
             Debug.Log($"主菜单红点: {RedPointHelper.HasRedPoint("main_menu")} (数量: {RedPointHelper.GetRedPointCount("main_menu")})");
         }
 
+#if UNITY_EDITOR
+        
         [ContextMenu("打印红点图")]
         public void PrintRedPointGraph()
         {
             RedPointHelper.PrintGraph();
         }
-
+#endif
+        
         #endregion
 
         private void OnDestroy()

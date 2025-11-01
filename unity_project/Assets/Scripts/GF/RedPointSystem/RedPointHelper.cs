@@ -225,6 +225,8 @@ namespace GF.RedPoint
             return Module?.HasCircularDependency() ?? false;
         }
 
+        #if UNITY_EDITOR
+        
         /// <summary>
         /// 打印红点图（调试用）
         /// </summary>
@@ -233,6 +235,8 @@ namespace GF.RedPoint
             Module?.PrintGraph();
         }
 
+        #endif
+        
         #endregion
     }
 }
