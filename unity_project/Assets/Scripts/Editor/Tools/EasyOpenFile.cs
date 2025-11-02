@@ -4,11 +4,10 @@ using System.Diagnostics;
 using UnityEditor;
 using UnityEngine;
 
-// @Author ：#Name#
-// @Created ：#CreateTime#
+
 namespace GF.Editor
 {
-    public class Tools : MonoBehaviour
+    public static class EasyOpenFile
     {
         // 打开 Application.persistentDataPath 文件夹
         [MenuItem("GF/打开持久化数据文件夹")]

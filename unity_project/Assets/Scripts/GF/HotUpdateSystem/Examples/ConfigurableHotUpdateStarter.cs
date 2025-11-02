@@ -1,4 +1,11 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Reflection;
+using GF.HybridCLR;
+using HybridCLR;
 using UnityEngine;
 using YooAsset;
 
@@ -149,10 +156,14 @@ namespace GF.HotUpdateSystem
             var config = HotUpdateHelper.LoadServerConfig();
             if (_showDebugLog)
                 Debug.Log("使用Resources加载的ServerConfig");
+
+            if (config == null) return null;
+            if (!config.Validate()) return null;
+            
             
             return config;
         }
-
+        
         private void OnStageChangedEvent(object sender, HotUpdateEventArgs e)
         {
             if (_showDebugLog)
@@ -183,66 +194,27 @@ namespace GF.HotUpdateSystem
         private void OnErrorEvent(object sender, HotUpdateEventArgs e)
         {
             if (_showDebugLog)
-                Debug.LogError($"热更新失败: {e.ErrorMessage}");
+                Debug.LogError($"热更新失败: {e.ErrorMessage}\n{e.Message}");
             
             OnHotUpdateFailed?.Invoke(e.ErrorMessage);
         }
 
         private void OnCompletedEvent(object sender, HotUpdateEventArgs e)
         {
-            if (_showDebugLog)
-                Debug.Log("热更新完成！");
+            if (_showDebugLog) Debug.Log("热更新完成！");
             
             // 设置默认包
             var gamePackage = YooAssets.GetPackage(_packageName);
             YooAssets.SetDefaultPackage(gamePackage);
+            // 热更新脚本初始化
+            HybridCLRLoadDll.HotUpdateScriptInit();
             
             OnHotUpdateCompleted?.Invoke();
-            
+
             //TODO:切换到主页面场景
             YooAssets.LoadSceneAsync("scene_home");
         }
 
-        /// <summary>
-        /// 获取当前配置信息
-        /// </summary>
-        public string GetConfigInfo()
-        {
-            var config = GetServerConfig();
-            return $"包名: {_packageName}\n" +
-                   $"运行模式: {_playMode}\n" +
-                   $"服务器: {config.GetFullServerURL()}\n" +
-                   $"版本: {config.AppVersion}\n" +
-                   $"并发下载: {config.MaxConcurrentDownloads}\n" +
-                   $"重试次数: {config.DownloadRetryCount}";
-        }
-
-        /// <summary>
-        /// 验证配置
-        /// </summary>
-        public bool ValidateConfig()
-        {
-            var config = GetServerConfig();
-            return config.Validate();
-        }
         
-        /// <summary>
-        /// 设置服务器配置
-        /// </summary>
-        public void SetServerConfig(ServerConfig config)
-        {
-            _serverConfig = config;
-        }
-        
-        /// <summary>
-        /// 从Resources加载服务器配置
-        /// </summary>
-        [ContextMenu("从Resources加载配置")]
-        public void LoadConfigFromResources()
-        {
-            _serverConfig = HotUpdateHelper.LoadServerConfig();
-            if (_showDebugLog)
-                Debug.Log("已从Resources加载ServerConfig");
-        }
     }
 } 
