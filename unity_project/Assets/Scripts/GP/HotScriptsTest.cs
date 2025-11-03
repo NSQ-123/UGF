@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,6 +9,10 @@ namespace Game.GP
 {
     public class HotScriptsTest : MonoBehaviour
     {
-
+        private void Start()
+        {
+            Debug.Log("=============================================================================");
+            Debug.Log("Hello World");
+        }
     }
 }

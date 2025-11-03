@@ -5,5 +5,8 @@
     <Group GroupActiveRule="EnableGroup" GroupName="GameDll" GroupDesc="" AssetTags="">
       <Collector CollectPath="Assets/Res/BundleRes/GameDll" CollectGUID="025d0cba92aab2e439140c5e4e5fb58c" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackSeparately" FilterRule="CollectAll" UserData="" AssetTags="" />
     </Group>
+    <Group GroupActiveRule="EnableGroup" GroupName="GameScene" GroupDesc="" AssetTags="">
+      <Collector CollectPath="Assets/Res/BundleRes/GameScene" CollectGUID="9612092ef820e4940a7b43206f985795" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackSeparately" FilterRule="CollectAll" UserData="" AssetTags="" />
+    </Group>
   </Package>
 </root>

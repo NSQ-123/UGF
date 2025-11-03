@@ -122,19 +122,20 @@ namespace GF.HotUpdateSystem
                 return false;
             }
 
-            // 检查磁盘空间
-            if (_checkDiskSpaceBeforeStart)
-            {
-                long requiredBytes = _requiredDiskSpaceMB * 1024 * 1024; // 转换为字节
-                if (!HotUpdateHelper.HasEnoughDiskSpace(requiredBytes))
-                {
-                    string error = $"磁盘空间不足，需要 {_requiredDiskSpaceMB}MB 可用空间";
-                    if (_showDebugLog)
-                        Debug.LogError(error);
-                    OnHotUpdateFailed?.Invoke(error);
-                    return false;
-                }
-            }
+            //TODO:空间检查可能需要特定平台实现
+            // // 检查磁盘空间
+            // if (_checkDiskSpaceBeforeStart)
+            // {
+            //     long requiredBytes = _requiredDiskSpaceMB * 1024 * 1024; // 转换为字节
+            //     if (!HotUpdateHelper.HasEnoughDiskSpace(requiredBytes))
+            //     {
+            //         string error = $"磁盘空间不足，需要 {_requiredDiskSpaceMB}MB 可用空间";
+            //         if (_showDebugLog)
+            //             Debug.LogError(error);
+            //         OnHotUpdateFailed?.Invoke(error);
+            //         return false;
+            //     }
+            // }
 
             return true;
         }
@@ -212,7 +213,8 @@ namespace GF.HotUpdateSystem
             OnHotUpdateCompleted?.Invoke();
 
             //TODO:切换到主页面场景
-            YooAssets.LoadSceneAsync("scene_home");
+            //YooAssets.LoadSceneAsync("scene_home");
+            YooAssets.LoadSceneAsync("HotScriptsTest");
         }
 
         
