@@ -1,4 +1,17 @@
 {
-	"name": "GamePlay",
-	"references":[ "GUID:9ad203e717acd4843920f2a1d8adf1c7" ]
+    "name": "GamePlay",
+    "rootNamespace": "",
+    "references": [
+        "GameFramework",
+        "YooAsset"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

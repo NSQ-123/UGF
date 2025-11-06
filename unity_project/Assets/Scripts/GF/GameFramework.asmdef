@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "YooAsset",
-        "HybridCLR.Runtime"
+        "HybridCLR.Runtime",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

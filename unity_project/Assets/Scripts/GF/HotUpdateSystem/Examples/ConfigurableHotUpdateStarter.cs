@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
+using Cysharp.Threading.Tasks;
 using GF.HybridCLR;
 using HybridCLR;
 using UnityEngine;
@@ -203,20 +204,26 @@ namespace GF.HotUpdateSystem
         private void OnCompletedEvent(object sender, HotUpdateEventArgs e)
         {
             if (_showDebugLog) Debug.Log("热更新完成！");
-            
+            EndHotUpdate().Forget();
+        }
+
+        private async UniTask EndHotUpdate()
+        {
             // 设置默认包
             var gamePackage = YooAssets.GetPackage(_packageName);
             YooAssets.SetDefaultPackage(gamePackage);
             // 热更新脚本初始化
-            HybridCLRLoadDll.HotUpdateScriptInit();
+            await HybridCLRLoadDll.HotUpdateScriptInit();
             
             OnHotUpdateCompleted?.Invoke();
-
+            
+            
+            
             //TODO:切换到主页面场景
             //YooAssets.LoadSceneAsync("scene_home");
             YooAssets.LoadSceneAsync("HotScriptsTest");
         }
-
+        
         
     }
 } 

@@ -8,5 +8,8 @@
     <Group GroupActiveRule="EnableGroup" GroupName="GameScene" GroupDesc="" AssetTags="">
       <Collector CollectPath="Assets/Res/BundleRes/GameScene" CollectGUID="9612092ef820e4940a7b43206f985795" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackSeparately" FilterRule="CollectAll" UserData="" AssetTags="" />
     </Group>
+    <Group GroupActiveRule="EnableGroup" GroupName="GamePrefab" GroupDesc="" AssetTags="">
+      <Collector CollectPath="Assets/Res/BundleRes/GamePrefab" CollectGUID="237d78609f615cc4f88f01cce6f762df" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackDirectory" FilterRule="CollectAll" UserData="" AssetTags="" />
+    </Group>
   </Package>
 </root>

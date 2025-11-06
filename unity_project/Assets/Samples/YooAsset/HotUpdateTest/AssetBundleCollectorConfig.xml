@@ -1,5 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root Version="v2025.8.28">
-  <Common ShowPackageView="True" ShowEditorAlias="False" UniqueBundleName="False" />
-  <Package PackageName="HotUpdateTest" PackageDesc="" AutoAddressable="False" SupportExtensionless="True" LocationToLower="False" IncludeAssetGUID="False" IgnoreRuleName="NormalIgnoreRule" />
-</root>
