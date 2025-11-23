@@ -1,15 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root Version="v2025.8.28">
-  <Common ShowPackageView="True" ShowEditorAlias="False" UniqueBundleName="False" />
+  <Common ShowPackageView="False" ShowEditorAlias="False" UniqueBundleName="False" />
   <Package PackageName="HotUpdateTest" PackageDesc="" AutoAddressable="True" SupportExtensionless="True" LocationToLower="False" IncludeAssetGUID="False" IgnoreRuleName="NormalIgnoreRule">
     <Group GroupActiveRule="EnableGroup" GroupName="GameDll" GroupDesc="" AssetTags="">
       <Collector CollectPath="Assets/Res/BundleRes/GameDll" CollectGUID="025d0cba92aab2e439140c5e4e5fb58c" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackSeparately" FilterRule="CollectAll" UserData="" AssetTags="" />
     </Group>
-    <Group GroupActiveRule="EnableGroup" GroupName="GameScene" GroupDesc="" AssetTags="">
-      <Collector CollectPath="Assets/Res/BundleRes/GameScene" CollectGUID="9612092ef820e4940a7b43206f985795" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackSeparately" FilterRule="CollectAll" UserData="" AssetTags="" />
-    </Group>
-    <Group GroupActiveRule="EnableGroup" GroupName="GamePrefab" GroupDesc="" AssetTags="">
+    <Group GroupActiveRule="EnableGroup" GroupName="GameRes" GroupDesc="" AssetTags="">
       <Collector CollectPath="Assets/Res/BundleRes/GamePrefab" CollectGUID="237d78609f615cc4f88f01cce6f762df" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackDirectory" FilterRule="CollectAll" UserData="" AssetTags="" />
+      <Collector CollectPath="Assets/Res/BundleRes/GameScene" CollectGUID="9612092ef820e4940a7b43206f985795" CollectType="MainAssetCollector" AddressRule="AddressByFileName" PackRule="PackDirectory" FilterRule="CollectAll" UserData="" AssetTags="" />
     </Group>
   </Package>
 </root>

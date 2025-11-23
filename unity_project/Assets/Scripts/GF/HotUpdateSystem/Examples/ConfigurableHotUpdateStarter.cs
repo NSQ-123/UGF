@@ -19,37 +19,49 @@ namespace GF.HotUpdateSystem
     public class ConfigurableHotUpdateStarter : MonoBehaviour
     {
         [Header("包配置")]
-        [SerializeField] private string _packageName = "DefaultPackage";
-        [SerializeField] private EPlayMode _playMode = EPlayMode.HostPlayMode;
-        
+        [SerializeField]
+        private string _packageName = "DefaultPackage";
+
+        [SerializeField]
+        private EPlayMode _playMode = EPlayMode.HostPlayMode;
+
         [Header("服务器配置")]
         [Tooltip("服务器配置文件，如果为空则使用默认配置")]
-        [SerializeField] private ServerConfig _serverConfig;
-        
+        [SerializeField]
+        private ServerConfig _serverConfig;
+
         [Header("启动配置")]
-        [SerializeField] private bool _autoStart = true;
-        [SerializeField] private bool _checkNetworkBeforeStart = true;
-        [SerializeField] private bool _checkDiskSpaceBeforeStart = true;
-        [SerializeField] private long _requiredDiskSpaceMB = 100; // 需要的磁盘空间（MB）
-        
+        [SerializeField]
+        private bool _autoStart = true;
+
+        [SerializeField]
+        private bool _checkNetworkBeforeStart = true;
+
+        [SerializeField]
+        private bool _checkDiskSpaceBeforeStart = true;
+
+        [SerializeField]
+        private long _requiredDiskSpaceMB = 100; // 需要的磁盘空间（MB）
+
         [Header("调试信息")]
-        [SerializeField] private bool _showDebugLog = true;
-        
+        [SerializeField]
+        private bool _showDebugLog = true;
+
         /// <summary>
         /// 热更新完成事件
         /// </summary>
         public System.Action OnHotUpdateCompleted;
-        
+
         /// <summary>
         /// 热更新失败事件
         /// </summary>
         public System.Action<string> OnHotUpdateFailed;
-        
+
         /// <summary>
         /// 阶段变化事件
         /// </summary>
         public System.Action<HotUpdateStage, HotUpdateStage> OnStageChanged;
-        
+
         /// <summary>
         /// 进度更新事件
         /// </summary>
@@ -85,25 +97,29 @@ namespace GF.HotUpdateSystem
 
             // 2. 初始化YooAsset
             YooAssets.Initialize();
-            
+
             // 3. 获取配置
             var config = GetServerConfig();
-            
+
             // 4. 创建热更新操作
-            var operation = HotUpdateHelper.StartHotUpdateWithConfig(_packageName, _playMode, config);
-            
+            var operation = HotUpdateHelper.StartHotUpdateWithConfig(
+                _packageName,
+                _playMode,
+                config
+            );
+
             // 5. 设置协程运行器（必须在开始操作之前）
             operation.SetCoroutineRunner(this);
-            
+
             // 6. 注册事件
             operation.OnStageChanged += OnStageChangedEvent;
             operation.OnProgressChanged += OnProgressChangedEvent;
             operation.OnError += OnErrorEvent;
             operation.OnCompleted += OnCompletedEvent;
-            
+
             // 7. 开始热更新操作
             HotUpdateHelper.StartOperation(operation);
-            
+
             // 8. 等待完成
             yield return operation;
         }
@@ -153,24 +169,25 @@ namespace GF.HotUpdateSystem
                     Debug.Log("使用Inspector配置的ServerConfig");
                 return _serverConfig;
             }
-            
+
             // 尝试从Resources加载
             var config = HotUpdateHelper.LoadServerConfig();
             if (_showDebugLog)
                 Debug.Log("使用Resources加载的ServerConfig");
 
-            if (config == null) return null;
-            if (!config.Validate()) return null;
-            
-            
+            if (config == null)
+                return null;
+            if (!config.Validate())
+                return null;
+
             return config;
         }
-        
+
         private void OnStageChangedEvent(object sender, HotUpdateEventArgs e)
         {
             if (_showDebugLog)
                 Debug.Log($"阶段变化: {e.PreviousStage} → {e.CurrentStage}: {e.Message}");
-            
+
             OnStageChanged?.Invoke(e.PreviousStage, e.CurrentStage);
         }
 
@@ -181,15 +198,18 @@ namespace GF.HotUpdateSystem
                 string progressText = $"{e.Progress * 100:F1}%";
                 if (e.DownloadInfo != null)
                 {
-                    string sizeText = $"{HotUpdateHelper.FormatFileSize(e.DownloadInfo.CurrentSize)}/{HotUpdateHelper.FormatFileSize(e.DownloadInfo.TotalSize)}";
-                    Debug.Log($"进度: {progressText} - {e.DownloadInfo.CurrentCount}/{e.DownloadInfo.TotalCount} 文件 - {sizeText}");
+                    string sizeText =
+                        $"{HotUpdateHelper.FormatFileSize(e.DownloadInfo.CurrentSize)}/{HotUpdateHelper.FormatFileSize(e.DownloadInfo.TotalSize)}";
+                    Debug.Log(
+                        $"进度: {progressText} - {e.DownloadInfo.CurrentCount}/{e.DownloadInfo.TotalCount} 文件 - {sizeText}"
+                    );
                 }
                 else
                 {
                     Debug.Log($"进度: {progressText} - {e.Message}");
                 }
             }
-            
+
             OnProgressUpdated?.Invoke(e.Progress, e.Message, e.DownloadInfo);
         }
 
@@ -197,13 +217,14 @@ namespace GF.HotUpdateSystem
         {
             if (_showDebugLog)
                 Debug.LogError($"热更新失败: {e.ErrorMessage}\n{e.Message}");
-            
+
             OnHotUpdateFailed?.Invoke(e.ErrorMessage);
         }
 
         private void OnCompletedEvent(object sender, HotUpdateEventArgs e)
         {
-            if (_showDebugLog) Debug.Log("热更新完成！");
+            if (_showDebugLog)
+                Debug.Log("热更新完成！");
             EndHotUpdate().Forget();
         }
 
@@ -214,16 +235,40 @@ namespace GF.HotUpdateSystem
             YooAssets.SetDefaultPackage(gamePackage);
             // 热更新脚本初始化
             await HybridCLRLoadDll.HotUpdateScriptInit();
-            
+
             OnHotUpdateCompleted?.Invoke();
-            
-            
-            
+
+            //======================================================
+            LoadCubeTest().Forget();
+            LoadTextTest().Forget();
+            //======================================================
+
             //TODO:切换到主页面场景
             //YooAssets.LoadSceneAsync("scene_home");
             YooAssets.LoadSceneAsync("HotScriptsTest");
         }
-        
-        
+
+        private async UniTask LoadCubeTest()
+        {
+            var (asset, handle) = await Load<GameObject>("Cube");
+            var cubeGo = GameObject.Instantiate(asset);
+            cubeGo.transform.position = new Vector3(5, 0, 0);
+            Debug.Log($"Cube name is {cubeGo.name}");
+        }
+
+        private async UniTask LoadTextTest()
+        {
+            var (asset, handle) = await Load<TextAsset>("GamePlay.dll");
+            Debug.Log(asset.text.Length);
+        }
+
+        private static async UniTask<(T, AssetHandle)> Load<T>(string assetLocation)
+            where T : UnityEngine.Object
+        {
+            var handle = YooAssets.LoadAssetAsync<T>(assetLocation);
+            await handle.Task.AsUniTask();
+            var asset = handle.GetAssetObject<T>();
+            return (asset, handle);
+        }
     }
-} 
+}

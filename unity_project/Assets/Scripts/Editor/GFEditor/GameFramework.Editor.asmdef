@@ -3,7 +3,9 @@
     "rootNamespace": "",
     "references": [
         "GameFramework",
-        "HybridCLR.Editor"
+        "HybridCLR.Editor",
+        "YooAsset",
+        "YooAsset.Editor"
     ],
     "includePlatforms": [
         "Editor"

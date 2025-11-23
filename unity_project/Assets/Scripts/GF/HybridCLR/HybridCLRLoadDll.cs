@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using HybridCLR;
 using UnityEngine;
@@ -17,14 +18,16 @@ namespace GF.HybridCLR
         // 根据AOTGenericReferences.cs的提示确定列表
         public static readonly IReadOnlyList<string> AOTMetaAssemblyFiles = new List<string>
         {
-            "mscorlib.dll", "System.dll", "System.Core.dll",
+            "mscorlib.dll",
+            "System.dll",
+            "System.Core.dll",
         };
-        
+
         public static readonly IReadOnlyList<string> HotUpdateAssemblyFiles = new List<string>
         {
             "GamePlay.dll",
         };
-        
+
         /// <summary>
         /// 热更新脚本初始化
         /// </summary>
@@ -40,24 +43,23 @@ namespace GF.HybridCLR
                 Assembly.Load(dll);
             }
 #endif
-            
         }
-        
+
         #region 补充元数据
 
         //补充元数据dll的列表
         //通过RuntimeApi.LoadMetadataForAOTAssembly()函数来补充AOT泛型的原始元数据
         private static Assembly _hotUpdateAss;
 
-        private static async UniTask<byte[]>  ReadDllBytes(string dllName)
+        private static async UniTask<byte[]> ReadDllBytes(string dllName)
         {
-            var handle= YooAssets.LoadAssetAsync<TextAsset>(dllName);
+            var handle = YooAssets.LoadAssetAsync<TextAsset>(dllName);
             await handle.Task.AsUniTask();
             var tx = handle.GetAssetObject<TextAsset>();
             handle.Dispose();
             return tx.bytes;
         }
-        
+
         /// <summary>
         /// 为aot assembly加载原始metadata， 这个代码放aot或者热更新都行。
         /// 一旦加载后，如果AOT泛型函数对应native实现不存在，则自动替换为解释模式执行
@@ -77,7 +79,5 @@ namespace GF.HybridCLR
         }
 
         #endregion
-        
-        
     }
 }

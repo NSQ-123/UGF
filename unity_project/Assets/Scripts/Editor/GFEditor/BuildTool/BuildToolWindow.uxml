@@ -1,0 +1,47 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    
+    <ui:VisualElement name="root" class="root-container">
+        <!-- 标题 -->
+        <ui:Label text="打包编辑器 - HybridCLR &amp; YooAsset" name="title" class="title" />
+        
+        <!-- 配置区域 -->
+        <ui:VisualElement name="configContainer" class="config-container">
+            <!-- 构建目标 -->
+            <ui:VisualElement name="buildTargetContainer" class="field-container">
+                <ui:Label text="构建目标:" class="field-label" />
+                <uie:EnumField name="buildTargetField" />
+            </ui:VisualElement>
+            
+            <!-- 开发构建 -->
+            <ui:VisualElement name="developmentContainer" class="field-container">
+                <ui:Toggle name="developmentBuildToggle" label="开发构建" />
+            </ui:VisualElement>
+            
+            <!-- Package名称 -->
+            <ui:VisualElement name="packageContainer" class="field-container">
+                <ui:Label text="Package名称:" class="field-label" />
+                <ui:TextField name="packageNameField" value="HotUpdateTest" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <!-- 按钮区域 -->
+        <ui:VisualElement name="buttonContainer" class="button-container">
+            <ui:Button name="buildHybridCLRBtn" text="构建 HybridCLR" class="build-button" />
+            <ui:Button name="buildYooAssetBtn" text="构建 YooAsset" class="build-button" />
+            <ui:Button name="buildAllBtn" text="构建全部" class="build-button build-all-button" />
+            <ui:Button name="copyDllsBtn" text="复制DLL到目标目录" class="build-button" />
+        </ui:VisualElement>
+        
+        <!-- 进度条 -->
+        <uie:ProgressBar name="progressBar" title="准备就绪" class="progress-bar" />
+        
+        <!-- 日志区域 -->
+        <ui:VisualElement name="logContainer" class="log-container">
+            <ui:Label text="构建日志:" class="log-title" />
+            <ui:ScrollView name="logScrollView" class="log-scroll-view">
+                <ui:Label name="logLabel" class="log-label" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
+
