@@ -1,4 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Assets/Editor/BuildToolWindow.uss?fileID=7433441132597879392&amp;guid=76c5f4222fd065c4cb35322774be9a41&amp;type=3#BuildToolWindow" />
-    <ui:Label tabindex="-1" text="你好" parse-escape-sequences="true" display-tooltip-when-elided="true" style="position: relative;" />
-</ui:UXML>

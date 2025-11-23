@@ -23,17 +23,26 @@ namespace Game.BuildTools
             return string.Empty;
         }
 
+        [MenuItem("BuildTools/TestBuild")]
+        public static void TestBuild()
+        {
+            Build(
+                "HotUpdateTest",
+                "1.0.0.test",
+                BuildTarget.StandaloneWindows64,
+                "ScriptableBuildPipeline",
+                true,
+                true
+            );
+        }
 
-    [MenuItem("BuildTools/TestBuild")]
-    public static void TestBuild()
-    {
-        Build("HotUpdateTest","1.0.0.test",BuildTarget.StandaloneWindows64,"ScriptableBuildPipeline",true,true);
-    }
-
-
-        public static void Build(string packageName,string buildVersion,BuildTarget buildTarget,string pipelineName,
-            bool clearBuildCache=false,
-            bool useAssetDependencyDB=true
+        public static void Build(
+            string packageName,
+            string buildVersion,
+            BuildTarget buildTarget,
+            string pipelineName,
+            bool clearBuildCache = false,
+            bool useAssetDependencyDB = true
         )
         {
             // 构建资源包
@@ -48,10 +57,10 @@ namespace Game.BuildTools
             buildParameters.PackageVersion = buildVersion;
             buildParameters.EnableSharePackRule = true;
             buildParameters.VerifyBuildingResult = true;
-            buildParameters.FileNameStyle =EFileNameStyle.BundleName;
+            buildParameters.FileNameStyle = EFileNameStyle.BundleName;
             buildParameters.BuildinFileCopyOption = EBuildinFileCopyOption.ClearAndCopyAll;
             buildParameters.BuildinFileCopyParams = string.Empty;
-            buildParameters.CompressOption =  ECompressOption.LZ4;
+            buildParameters.CompressOption = ECompressOption.LZ4;
             buildParameters.ClearBuildCacheFiles = clearBuildCache;
             buildParameters.UseAssetDependencyDB = useAssetDependencyDB;
             buildParameters.EncryptionServices = CreateEncryptionServicesInstance();
@@ -62,7 +71,7 @@ namespace Game.BuildTools
             buildParameters.EnableSharePackRule = false;
             buildParameters.StripUnityVersion = true;
             buildParameters.ReplaceAssetPathWithAddress = true;
-            
+
             ScriptableBuildPipeline pipeline = new ScriptableBuildPipeline();
             var buildResult = pipeline.Run(buildParameters, true);
             if (buildResult.Success)
@@ -109,7 +118,10 @@ namespace Game.BuildTools
         /// <summary>
         /// Mono脚本的资源包名称
         /// </summary>
-        protected static string GetMonoScriptsBundleName(string packageName, bool uniqueBundleName = true)
+        protected static string GetMonoScriptsBundleName(
+            string packageName,
+            bool uniqueBundleName = true
+        )
         {
             var packRuleResult = DefaultPackRule.CreateMonosPackRuleResult();
             return packRuleResult.GetBundleName(packageName, uniqueBundleName);
